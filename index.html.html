@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Smart Emergency Route Optimizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#0B1420;--panel:#111E2E;--p2:#0D1826;--line:#27374A;--soft:#1B2A3B;--tx:#E7ECF2;--dim:#8FA0B5;--faint:#5C6C80;--amber:#F2A33B;--red:#E85D4A;--teal:#35C6A6;--blue:#4F8FE8;--road:#44556B;box-sizing:border-box}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 'Space Grotesk',-apple-system,'Segoe UI',sans-serif;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.m{font-family:'JetBrains Mono',ui-monospace,monospace}
+header{padding:16px 18px;border-bottom:1px solid var(--soft);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+h1{margin:0;font-size:21px;letter-spacing:-.01em}
+header p{margin:2px 0 0;color:var(--dim);font-size:13px}
+.badge{background:var(--p2);border:1px solid var(--amber);border-radius:8px;padding:7px 12px;font-size:13px}
+.badge b{color:var(--amber)}
+main{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:14px;padding:14px 18px}
+@media(max-width:1000px){main{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.pn{background:var(--panel);border:1px solid var(--line);border-radius:8px;min-width:0}
+.pn>h2{margin:0;padding:9px 13px;font-size:13px;font-weight:700;border-bottom:1px solid var(--soft);color:var(--dim);display:flex;justify-content:space-between;gap:8px}
+.pn>h2 span{font-weight:400;color:var(--faint)}
+.bd{padding:12px 13px}
+svg{display:block;width:100%;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;padding:0 13px 11px;font-size:11.5px;color:var(--dim)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px;border:2px solid}
+/* graph */
+.hit{stroke:transparent;stroke-width:18;cursor:pointer}
+.e{stroke:var(--road);stroke-width:2.5;transition:stroke .2s}
+.e.tree{stroke:var(--teal);stroke-width:3}
+.e.look{stroke:var(--amber);stroke-width:4}
+.e.path{stroke:var(--amber);stroke-width:5.5}
+.e.blk{stroke:var(--red);stroke-dasharray:6 5}
+.wb{fill:var(--panel);stroke:var(--soft);cursor:pointer}.wb.sel{stroke:var(--blue);stroke-width:2}
+.wl{fill:var(--tx);font:500 11px 'JetBrains Mono',monospace;text-anchor:middle;pointer-events:none}.wl.blk{fill:var(--red)}
+.n circle{fill:var(--p2);stroke:var(--road);stroke-width:2.5;cursor:grab;transition:fill .2s,stroke .2s}
+.n.inq circle{stroke:var(--amber)}
+.n.done circle{fill:#16314A;stroke:var(--teal)}
+.n.cur circle{fill:var(--amber);stroke:var(--amber)}
+.n.path circle{fill:#5A3E12;stroke:var(--amber)}
+.n.src circle{stroke:var(--blue);stroke-width:4}
+.n.tgt circle{stroke:var(--teal);stroke-width:4}
+.n.cur text.nm{fill:var(--bg)}
+.nm{fill:var(--tx);font:700 13px 'Space Grotesk';text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.dl{fill:var(--amber);font:500 11px 'JetBrains Mono',monospace;text-anchor:middle;pointer-events:none}
+.hc{fill:var(--teal);font-size:12px;pointer-events:none}
+#mk{transition:transform .5s linear;opacity:0}
+/* tree */
+.te{stroke:var(--teal);stroke-width:2;opacity:.45}.te.path{stroke:var(--amber);stroke-width:5;opacity:1}
+.wp{fill:var(--panel);stroke:var(--teal);stroke-width:1.5}.wp.on{fill:#2A2312;stroke:var(--amber)}.wl.on{fill:var(--amber)}
+#tp{color:var(--tx);font:13px 'JetBrains Mono',monospace;padding-top:10px}
+.tn{fill:var(--p2);stroke:var(--teal);stroke-width:2}.tn.path{fill:#5A3E12;stroke:var(--amber)}
+/* controls */
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:10px}
+.f{flex:1;min-width:100px}
+label{display:block;font-size:11.5px;color:var(--faint);margin-bottom:3px}
+select,input[type=number]{width:100%;background:var(--p2);color:var(--tx);border:1px solid var(--line);border-radius:6px;padding:7px 8px;font:inherit}
+button{background:var(--p2);color:var(--tx);border:1px solid var(--line);border-radius:6px;padding:7px 11px;font:inherit;font-size:13px;cursor:pointer}
+button:hover{border-color:var(--dim)}
+button.go{background:var(--red);border-color:var(--red);font-weight:700;color:#fff}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+input[type=range]{width:100%;accent-color:var(--amber)}
+.hint{color:var(--faint);font-size:12px;margin:0}
+.msg{background:var(--p2);border-left:3px solid var(--amber);padding:8px 10px;font-size:13px;min-height:42px;margin-bottom:10px;border-radius:0 6px 6px 0}
+/* pseudocode */
+.pc{margin:0;padding:6px 0;font:12px/1.75 'JetBrains Mono',monospace;color:var(--dim)}
+.pc div{white-space:pre;padding:0 13px;border-left:3px solid transparent;overflow:hidden}
+.pc div.on{background:#2A2312;color:var(--amber);border-left-color:var(--amber)}
+.ai{font-size:12.5px;color:var(--dim);margin:0 0 6px}.ai b{color:var(--tx)}
+/* state */
+.chips{display:flex;flex-wrap:wrap;gap:5px;min-height:26px;margin-bottom:10px}
+.chip{background:var(--p2);border:1px solid var(--amber);border-radius:5px;padding:1px 7px;font:12px 'JetBrains Mono',monospace;color:var(--amber)}
+table{width:100%;border-collapse:collapse;font:12px 'JetBrains Mono',monospace}
+th,td{padding:3px 6px;text-align:center;border-bottom:1px solid var(--soft)}th{color:var(--faint);font-weight:400}
+tr.c td{background:#2A2312;color:var(--amber)}tr.d td{color:var(--teal)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:3px 10px;font-size:12.5px}.kv span:nth-child(odd){color:var(--dim)}.kv span:nth-child(even){font-family:'JetBrains Mono',monospace;text-align:right}
+.big{font:700 26px 'JetBrains Mono',monospace;color:var(--amber)}
+.hb{padding:2px 10px;font:12px 'JetBrains Mono',monospace}.hb.on{border-color:var(--teal);color:var(--teal);background:#12302B}
+.tb{padding:10px 13px 6px;margin:0}.tl.on{border-color:var(--amber);color:var(--amber);background:#2A2312}.n.pend circle{stroke:var(--blue);stroke-dasharray:4 3}svg#g.add{cursor:crosshair}#mk{pointer-events:none}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Smart Emergency Route Optimizer</h1><p>Dynamic ambulance and evacuation pathfinding on an editable city graph</p></div>
+  <div class="badge" id="badge"></div>
+</header>
+<main>
+<div class="col">
+  <section class="pn">
+    <h2>City road network <span>pick a tool, then use the map</span></h2>
+    <div class="row tb" id="tools"><button class="tl on" data-t="sel">Move / edit</button><button class="tl" data-t="node">Add intersection</button><button class="tl" data-t="road">Add road</button><button class="tl" data-t="del">Delete</button></div><p class="hint" id="th" style="padding:0 13px 8px"></p>
+    <svg id="g" viewBox="0 0 700 400" role="img" aria-label="Weighted city graph"><g id="gg"></g><g id="mk"><circle r="8" fill="#E85D4A" stroke="#0B1420" stroke-width="2"/></g></svg>
+    <div class="legend">
+      <span><i style="border-color:#4F8FE8"></i>Start</span><span><i style="border-color:#35C6A6"></i>Destination</span>
+      <span><i style="border-color:#F2A33B"></i>In queue</span><span><i style="background:#F2A33B;border-color:#F2A33B"></i>Being processed</span>
+      <span><i style="background:#16314A;border-color:#35C6A6"></i>Settled</span><span style="color:#E85D4A">Dashed red: blocked road</span><span style="color:#F2A33B">Thick amber: final route</span>
+    </div>
+  </section>
+  <section class="pn">
+    <h2>Shortest-path tree <span id="tsub"></span></h2>
+    <svg id="t" viewBox="0 0 700 340" role="img" aria-label="Shortest path tree"></svg>
+    <div class="legend" id="tp"></div>
+  </section>
+</div>
+<div class="col">
+  <section class="pn"><h2>Controls</h2><div class="bd">
+    <div class="row">
+      <div class="f"><label for="src">Start</label><select id="src"></select></div>
+      <div class="f"><label for="tgt">Destination</label><select id="tgt"></select></div>
+    </div>
+    <div class="row"><div class="f"><label for="alg">Algorithm</label><select id="alg"><option value="dijkstra">Dijkstra’s algorithm</option><option value="astar">A* search</option></select></div></div>
+    <label>Hospitals (click a letter to toggle)</label><div class="chips" id="hs"></div>
+    <div class="row">
+      <button id="bk" title="Previous step">◀ Back</button><button id="pl" class="go">Play</button><button id="fw" title="Next step">Next ▶</button><button id="rp">Replay</button>
+    </div>
+    <label for="sp">Speed</label><input type="range" id="sp" min="1" max="10" value="6">
+    <div class="msg" id="msg"></div>
+    <div id="edit"></div>
+    <div class="row" style="margin:8px 0 0"><button id="rt">Random traffic</button><button id="rs">Reset graph</button></div>
+  </div></section>
+  <section class="pn"><h2>Algorithm <span id="step"></span></h2><div class="bd" style="padding-bottom:0"><p class="ai" id="ai"></p></div><div class="pc" id="pc"></div></section>
+  <section class="pn"><h2>Live state</h2><div class="bd">
+    <label>Priority queue (node : key)</label><div class="chips" id="pq"></div>
+    <table id="tb"></table>
+  </div></section>
+  <section class="pn"><h2>Result</h2><div class="bd" id="res"></div></section>
+  <section class="pn"><h2>Graph properties</h2><div class="bd"><div class="kv" id="pr"></div></div></section>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id),NAMES='ABCDEFGHIJKLMNOPQRSTUVWXYZ',nm=v=>N[v]?N[v].name:'?';
+const DN=[[60,200],[190,70],[190,330],[330,35],[330,200],[330,365],[470,95],[470,320],[620,200],[620,345]];let HOSP=[3,8];
+const DE=[[0,1,4],[0,2,7],[1,3,3],[1,4,6],[2,4,5],[2,5,8],[3,4,2],[3,6,7],[4,5,3],[4,6,4],[4,7,6],[5,7,4],[6,7,3],[6,8,6],[7,8,5],[7,9,4],[8,9,3]];
+const INFO={dijkstra:{n:'Dijkstra’s algorithm',t:'Greedy method',c:'O((V + E) log V)',d:'Always settles the closest unsettled intersection, so its distance is final.'},
+astar:{n:'A* search',t:'Greedy with a heuristic',c:'O((V + E) log V) worst case',d:'Adds a straight-line estimate h to steer toward the destination, so fewer intersections are settled.'}};
+const PD=['for each intersection v: dist[v] ← ∞, prev[v] ← nil','dist[start] ← 0; add start to the queue','while the queue is not empty:','    u ← remove node with the smallest distance','    if u is a destination: stop','    for each open road (u, v, w):','        if dist[u] + w < dist[v]:','            dist[v] ← dist[u] + w; prev[v] ← u','            add or update v in the queue','return the route by following prev[ ] back from the destination'];
+const PA=PD.slice();PA[0]='for each intersection v: g[v] ← ∞, prev[v] ← nil';PA[1]='g[start] ← 0; add start to the queue';PA[3]='    u ← remove node with the smallest f = g + h';PA[6]='        if g[u] + w < g[v]:';PA[7]='            g[v] ← g[u] + w; prev[v] ← u';PA[8]='            queue.update(v, f = g[v] + h(v))';
+let N,E,S={src:0,tgt:-1,algo:'dijkstra',sel:null,node:null,tool:'sel',pend:null},steps=[],idx=0,playing=false,timer=0,tok=0,drag=null;
+const len=(a,b)=>Math.hypot(N[a].x-N[b].x,N[a].y-N[b].y),ei=(a,b)=>E.findIndex(e=>(e.u===a&&e.v===b)||(e.u===b&&e.v===a));
+function resetGraph(){N=DN.map(([x,y],i)=>({x,y,name:NAMES[i]}));E=DE.map(([u,v,w])=>({u,v,w,b:false}))}
+function pathOf(prev,t){const p=[];for(let c=t;c>=0;c=prev[c])p.push(c);return p.reverse()}
+
+function run(){
+  const n=N.length,adj=Array.from({length:n},()=>[]),T=S.tgt<0?HOSP:[S.tgt],A=S.algo==='astar';
+  let k=Infinity;E.forEach((e,i)=>{if(!e.b){adj[e.u].push([e.v,e.w,i]);adj[e.v].push([e.u,e.w,i]);k=Math.min(k,e.w/len(e.u,e.v))}});
+  if(!isFinite(k))k=0;
+  const h=v=>A?k*Math.min(...T.map(t=>len(v,t))):0,F=A?'f':'distance';
+  const dist=Array(n).fill(Infinity),prev=Array(n).fill(-1),done=Array(n).fill(false);let pq=[],cur=-1,edge=null,found=-1;const out=[];
+  const snap=(ln,msg)=>out.push({ln,msg,dist:[...dist],prev:[...prev],done:[...done],pq:pq.map(p=>[...p]).sort((a,b)=>a[1]-b[1]),cur,edge,found});
+  snap(0,'Set every distance to ∞ and every predecessor to nil.');
+  dist[S.src]=0;pq=[[S.src,h(S.src)]];snap(1,`Start at ${nm(S.src)} with distance 0.`);
+  while(true){
+    snap(2,pq.length?'The queue still has intersections to process.':'The queue is empty, so the search ends.');
+    if(!pq.length)break;
+    pq.sort((a,b)=>a[1]-b[1]);const u=pq.shift()[0];cur=u;edge=null;done[u]=true;
+    snap(3,`Remove ${nm(u)}. It has the smallest ${F} (distance ${dist[u]}), so that distance is now final.`);
+    if(T.includes(u)){found=u;snap(4,`${nm(u)} is a destination. The shortest route is found.`);break}
+    snap(4,`${nm(u)} is not a destination, so expand its roads.`);
+    for(const [v,w,i] of adj[u]){
+      if(done[v])continue;edge=i;snap(5,`Look at road ${nm(u)}–${nm(v)} (${w} min).`);
+      const nd=dist[u]+w,old=dist[v];
+      if(nd<old){snap(6,`${dist[u]} + ${w} = ${nd} beats ${old===Infinity?'∞':old}.`);dist[v]=nd;prev[v]=u;snap(7,`Update ${nm(v)}: distance ${nd}, reached from ${nm(u)}.`);
+        pq=pq.filter(p=>p[0]!==v);pq.push([v,nd+h(v)]);snap(8,`Put ${nm(v)} in the queue with key ${(nd+h(v)).toFixed(A?1:0)}.`)}
+      else snap(6,`${dist[u]} + ${w} = ${nd} is not better than ${old}. Skip.`);
+    }
+    edge=null;
+  }
+  cur=-1;edge=null;
+  snap(9,found>=0?`Route: ${pathOf(prev,found).map(nm).join(' → ')} in ${dist[found]} min.`:(T.length?'No route exists. Too many roads are blocked.':'No hospital is selected. Mark at least one intersection as a hospital.'));
+  return out;
+}
+function recompute(end=true){pause();tok++;steps=run();idx=end?steps.length-1:0;$('mk').style.opacity=0;draw()}
+
+function draw(){
+  const st=steps[idx],last=idx===steps.length-1,pn=last&&st.found>=0?pathOf(st.prev,st.found):[];
+  const pe=new Set();for(let i=0;i<pn.length-1;i++)pe.add(ei(pn[i],pn[i+1]));
+  const te=new Set();st.prev.forEach((p,v)=>{if(p>=0)te.add(ei(p,v))});
+  const inq=new Set(st.pq.map(p=>p[0])),T=S.tgt<0?HOSP:[S.tgt];let g='';
+  E.forEach((e,i)=>{const a=N[e.u],b=N[e.v],mx=(a.x+b.x)/2,my=(a.y+b.y)/2,c=e.b?'blk':pe.has(i)?'path':st.edge===i?'look':te.has(i)?'tree':'';
+    g+=`<g data-e="${i}"><line class="hit" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/><line class="e ${c}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/><rect class="wb${S.sel===i?' sel':''}" x="${mx-12}" y="${my-9}" width="24" height="18" rx="4"/><text class="wl${e.b?' blk':''}" x="${mx}" y="${my+4}">${e.b?'✕':e.w}</text></g>`});
+  N.forEach((p,v)=>{const c=['n',pn.includes(v)?'path':st.done[v]?'done':'',st.cur===v?'cur':'',inq.has(v)?'inq':'',v===S.src?'src':'',T.includes(v)?'tgt':'',v===S.pend?'pend':''].join(' ');
+    const d=st.dist[v];g+=`<g class="${c}" data-n="${v}"><circle cx="${p.x}" cy="${p.y}" r="22"/><text class="nm" x="${p.x}" y="${p.y}">${nm(v)}</text>${HOSP.includes(v)?`<text class="hc" x="${p.x+15}" y="${p.y-14}">✚</text>`:''}<text class="dl" x="${p.x}" y="${p.y+38}">${d<Infinity?d:''}</text></g>`});
+  $('gg').innerHTML=g;tree(st,pn);panels(st,last,pn);
+}
+function tree(st,pn){
+  const ch={},disc=[];st.dist.forEach((d,v)=>{if(d<Infinity)disc.push(v)});
+  disc.forEach(v=>{const p=st.prev[v];if(p>=0)(ch[p]=ch[p]||[]).push(v)});
+  const pos={};let leaf=0,md=0;
+  const lay=(v,d)=>{md=Math.max(md,d);const c=ch[v]||[];if(!c.length){pos[v]={x:leaf++,d};return}c.forEach(k=>lay(k,d+1));pos[v]={x:c.reduce((a,k)=>a+pos[k].x,0)/c.length,d}};
+  lay(S.src,0);const W=Math.max(700,120+md*125),H=Math.max(340,90+(leaf-1)*50),X=v=>50+pos[v].d*125,Y=v=>leaf>1?45+pos[v].x/(leaf-1)*(H-90):H/2;$('t').setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const hot=pn.length?pn:(st.cur>=0?pathOf(st.prev,st.cur):[]);let ln='',lb='',nd='';
+  disc.forEach(v=>{const p=st.prev[v];if(p<0)return;const on=hot.includes(v)&&hot.includes(p),w=E[ei(p,v)].w,lx=X(p)+(X(v)-X(p))*.5,ly=Y(p)+(Y(v)-Y(p))*.5;
+    ln+=`<line class="te${on?' path':''}" x1="${X(p)}" y1="${Y(p)}" x2="${X(v)}" y2="${Y(v)}"/>`;
+    lb+=`<rect class="wp${on?' on':''}" x="${lx-14}" y="${ly-10}" width="28" height="20" rx="10"/><text class="wl${on?' on':''}" x="${lx}" y="${ly+4}">${w}</text>`});
+  disc.forEach(v=>{nd+=`<circle class="tn${hot.includes(v)?' path':''}" cx="${X(v)}" cy="${Y(v)}" r="19"/><text class="nm" x="${X(v)}" y="${Y(v)}">${nm(v)}</text><text class="dl" x="${X(v)}" y="${Y(v)+35}">${st.dist[v]}</text>`});
+  $('t').innerHTML=ln+lb+nd;
+  $('tp').innerHTML=hot.length>1?(pn.length?'Final route: ':'Route so far: ')+hot.map((v,i)=>nm(v)+(i<hot.length-1?` —${E[ei(v,hot[i+1])].w}→ `:'')).join('')+` = ${st.dist[hot[hot.length-1]]} min`:'<span class="hint">The route appears here as the tree grows.</span>';
+  $('tsub').textContent=`${disc.length} of ${N.length} discovered. Pills are road weights, numbers under nodes are total time from the start.`;
+}
+function panels(st,last,pn){
+  const L=(S.algo==='astar'?PA:PD);$('pc').innerHTML=L.map((t,i)=>`<div class="${i===st.ln?'on':''}">${t.replace(/</g,'&lt;')}</div>`).join('');
+  $('step').textContent=`step ${idx+1} of ${steps.length}`;$('msg').textContent=st.msg;
+  $('pq').innerHTML=st.pq.length?st.pq.map(p=>`<span class="chip">${nm(p[0])}:${Number.isInteger(p[1])?p[1]:p[1].toFixed(1)}</span>`).join(''):'<span class="hint">empty</span>';
+  $('tb').innerHTML='<tr><th>Node</th><th>Dist</th><th>Prev</th><th>State</th></tr>'+N.map((_,v)=>`<tr class="${st.cur===v?'c':st.done[v]?'d':''}"><td>${nm(v)}</td><td>${st.dist[v]<Infinity?st.dist[v]:'∞'}</td><td>${st.prev[v]>=0?nm(st.prev[v]):'-'}</td><td>${st.cur===v?'current':st.done[v]?'settled':st.dist[v]<Infinity?'queued':'new'}</td></tr>`).join('');
+  $('pl').textContent=playing?'Pause':'Play';
+  if(last&&st.found>=0){const sc=st.done.filter(Boolean).length;$('res').innerHTML=`<div class="big">${st.dist[st.found]} min</div><p class="hint">${S.tgt<0?'Nearest hospital: '+nm(st.found):'Fastest route found'}</p><p style="margin:6px 0" class="m">${pn.map(nm).join(' → ')}</p><p class="hint">Settled ${sc} of ${N.length} intersections before stopping.</p>`}
+  else $('res').innerHTML=last?`<p class="hint">${S.tgt<0&&!HOSP.length?'Mark at least one intersection as a hospital.':'No route: blocked roads cut the start off from the destination.'}</p>`:'<p class="hint">Run the animation to the end to see the result.</p>';
+  // properties
+  const open=E.filter(e=>!e.b),deg=Array(N.length).fill(0),ad=Array.from({length:N.length},()=>[]);open.forEach(e=>{deg[e.u]++;deg[e.v]++;ad[e.u].push(e.v);ad[e.v].push(e.u)});
+  const seen=Array(N.length).fill(false);let comp=0;N.forEach((_,s)=>{if(seen[s])return;comp++;const q=[s];seen[s]=true;while(q.length){const u=q.pop();ad[u].forEach(v=>{if(!seen[v]){seen[v]=true;q.push(v)}})}});
+  const V=N.length,rows=[['Intersections (V)',V],['Open roads (E)',open.length],['Blocked roads',E.length-open.length],['Average degree',(2*open.length/V).toFixed(2)],['Density',(2*open.length/(V*(V-1))).toFixed(2)],['Connected',comp===1?'yes':`no (${comp} parts)`],['Total open weight',open.reduce((a,e)=>a+e.w,0)]];
+  if(S.node!==null)rows.push([`Node ${nm(S.node)} degree`,deg[S.node]+' ('+ad[S.node].map(nm).join(', ')+')']);
+  $('pr').innerHTML=rows.map(r=>`<span>${r[0]}</span><span>${r[1]}</span>`).join('');
+  $('badge').innerHTML=`<b>${INFO[S.algo].n}</b><br><span style="color:var(--dim);font-size:12px">${INFO[S.algo].t}, time ${INFO[S.algo].c}</span>`;
+  $('ai').innerHTML=`<b>${INFO[S.algo].n}</b> (${INFO[S.algo].t}). ${INFO[S.algo].d}`;
+}
+function editCard(){
+  const e=E[S.sel];
+  $('edit').innerHTML=e?`<div class="row"><div class="f"><label for="w">Road ${nm(e.u)}–${nm(e.v)} travel time (min)</label><input type="number" id="w" min="1" max="99" value="${e.w}"></div><button id="bl">${e.b?'Open road':'Block road'}</button></div>`:'<p class="hint">Click a road to change its weight or block it. Drag intersections to move them.</p>';
+  if(e){$('w').oninput=ev=>{const v=Math.max(1,Math.min(99,+ev.target.value||1));e.w=v;recompute()};$('bl').onclick=()=>{e.b=!e.b;editCard();recompute()}}
+}
+function pause(){playing=false;clearTimeout(timer)}
+const delay=()=>1100-$('sp').value*100;
+function tick(){if(!playing)return;if(idx>=steps.length-1){pause();draw();fly();return}idx++;draw();timer=setTimeout(tick,delay())}
+function fly(){const st=steps[idx];if(st.found<0)return;const p=pathOf(st.prev,st.found),my=++tok,m=$('mk');m.style.transition='none';m.style.transform=`translate(${N[p[0]].x}px,${N[p[0]].y}px)`;m.style.opacity=1;
+  setTimeout(()=>{m.style.transition='';p.slice(1).forEach((v,i)=>setTimeout(()=>{if(tok===my)m.style.transform=`translate(${N[v].x}px,${N[v].y}px)`},i*520))},60)}
+$('pl').onclick=()=>{if(playing){pause();draw();return}if(idx>=steps.length-1)idx=0;playing=true;tok++;$('mk').style.opacity=0;draw();timer=setTimeout(tick,delay())};
+$('rp').onclick=()=>{pause();idx=0;tok++;$('mk').style.opacity=0;draw();playing=true;draw();timer=setTimeout(tick,delay())};
+$('bk').onclick=()=>{pause();idx=Math.max(0,idx-1);draw()};$('fw').onclick=()=>{pause();idx=Math.min(steps.length-1,idx+1);draw()};
+$('src').onchange=e=>{S.src=+e.target.value;recompute()};$('tgt').onchange=e=>{S.tgt=+e.target.value;recompute()};$('alg').onchange=e=>{S.algo=e.target.value;recompute()};
+$('rt').onclick=()=>{E.forEach(e=>{e.w=Math.max(1,Math.min(15,e.w+Math.floor(Math.random()*7)-3))});editCard();recompute()};
+$('rs').onclick=()=>{resetGraph();HOSP=[3,8];S.src=0;S.tgt=-1;S.pend=null;fillSel();S.sel=null;S.node=null;editCard();recompute()};
+const svg=$('g'),pt=ev=>{const m=svg.getScreenCTM().inverse(),p=new DOMPoint(ev.clientX,ev.clientY).matrixTransform(m);return{x:Math.max(25,Math.min(675,p.x)),y:Math.max(25,Math.min(375,p.y))}};
+const MAXN=16,TIPS={sel:'Drag intersections to move them. Click a road to edit its weight or block it.',node:'Click an empty spot on the map to add an intersection.',road:'Click one intersection, then another, to build a road between them.',del:'Click an intersection or a road to remove it.'};
+function tip(m){$('th').textContent=m}
+function setTool(t){S.tool=t;S.pend=null;document.querySelectorAll('.tl').forEach(b=>b.classList.toggle('on',b.dataset.t===t));svg.classList.toggle('add',t==='node');tip(TIPS[t]);draw()}
+function addNode(p){
+  if(N.length>=MAXN)return tip('Maximum of '+MAXN+' intersections reached.');
+  if(N.some(q=>Math.hypot(q.x-p.x,q.y-p.y)<50))return tip('Too close to another intersection. Pick a free spot.');
+  const used=new Set(N.map(q=>q.name)),name=[...NAMES].find(c=>!used.has(c));
+  N.push({x:p.x,y:p.y,name});fillSel();recompute();tip(`Added ${name}. It has no roads yet, so use Add road to connect it.`)}
+function addRoad(v){
+  if(S.pend===null){S.pend=v;draw();return tip(`Now click the intersection to connect ${nm(v)} to.`)}
+  const a=S.pend;S.pend=null;if(a===v){draw();return tip('Cancelled.')}
+  const i=ei(a,v);if(i>=0){S.sel=i;editCard();draw();return tip(`Road ${nm(a)}-${nm(v)} already exists. Selected it.`)}
+  E.push({u:a,v,w:Math.max(1,Math.round(len(a,v)/35)),b:false});S.sel=E.length-1;editCard();recompute();tip(`Built road ${nm(a)}-${nm(v)}. Change its weight on the right.`)}
+function delEdge(i){const e=E[i];E.splice(i,1);S.sel=null;editCard();recompute();tip(`Removed road ${nm(e.u)}-${nm(e.v)}.`)}
+function delNode(r){
+  if(N.length<=2)return tip('Keep at least two intersections.');
+  const name=nm(r);E=E.filter(e=>e.u!==r&&e.v!==r).map(e=>({...e,u:e.u>r?e.u-1:e.u,v:e.v>r?e.v-1:e.v}));
+  N.splice(r,1);HOSP=HOSP.filter(h=>h!==r).map(h=>h>r?h-1:h);
+  S.src=S.src===r?0:S.src>r?S.src-1:S.src;S.tgt=S.tgt===r?-1:S.tgt>r?S.tgt-1:S.tgt;S.sel=null;S.node=null;S.pend=null;
+  fillSel();editCard();recompute();tip(`Removed intersection ${name} and its roads.`)}
+document.querySelectorAll('.tl').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
+svg.addEventListener('pointerdown',ev=>{const n=ev.target.closest('[data-n]'),e=ev.target.closest('[data-e]'),t=S.tool;
+  if(t==='node'){if(!n&&!e)addNode(pt(ev));return}
+  if(t==='road'){if(n)addRoad(+n.dataset.n);return}
+  if(t==='del'){if(n)delNode(+n.dataset.n);else if(e)delEdge(+e.dataset.e);return}
+  if(n){drag=+n.dataset.n;S.node=drag;svg.setPointerCapture(ev.pointerId);draw()}else if(e){S.sel=+e.dataset.e;editCard();draw()}});
+svg.addEventListener('pointermove',ev=>{if(drag===null)return;Object.assign(N[drag],pt(ev));recompute()});
+svg.addEventListener('pointerup',()=>{drag=null});
+resetGraph();
+function fillSel(){
+  const tag=i=>`${nm(i)}${HOSP.includes(i)?' (hospital)':''}`,sel=(i,v)=>i===v?' selected':'';
+  $('src').innerHTML=N.map((_,i)=>`<option value="${i}"${sel(i,S.src)}>${tag(i)}</option>`).join('');
+  $('tgt').innerHTML='<option value="-1">Nearest hospital (evacuation)</option>'+N.map((_,i)=>`<option value="${i}"${sel(i,S.tgt)}>${tag(i)}</option>`).join('');
+  $('hs').innerHTML=N.map((_,i)=>`<button class="hb${HOSP.includes(i)?' on':''}" data-h="${i}" aria-pressed="${HOSP.includes(i)}">${nm(i)}</button>`).join('');
+}
+$('hs').onclick=ev=>{const b=ev.target.closest('[data-h]');if(!b)return;const i=+b.dataset.h;HOSP=HOSP.includes(i)?HOSP.filter(x=>x!==i):[...HOSP,i];fillSel();recompute()};
+fillSel();editCard();recompute();setTool('sel');
+</script>
+</body>
+</html>
